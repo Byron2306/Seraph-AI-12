@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Site Blocked - Seraph AI</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      max-width: 500px;
+      text-align: center;
+    }
+    .shield {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 40px rgba(239, 68, 68, 0.4);
+    }
+    .shield svg {
+      width: 40px;
+      height: 40px;
+      fill: white;
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 16px;
+      color: #ef4444;
+    }
+    .domain {
+      font-family: monospace;
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 8px 16px;
+      border-radius: 6px;
+      margin: 16px 0;
+      word-break: break-all;
+    }
+    .reason {
+      color: #94a3b8;
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: #94a3b8;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.15); color: white; }
+    .btn-danger {
+      background: transparent;
+      color: #ef4444;
+      border: 1px solid #ef4444;
+    }
+    .btn-danger:hover { background: rgba(239, 68, 68, 0.1); }
+    .footer {
+      margin-top: 40px;
+      font-size: 12px;
+      color: #64748b;
+    }
+    .footer a { color: #3b82f6; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="shield">
+      <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 6h2v2h-2V7zm0 4h2v6h-2v-6z"/></svg>
+    </div>
+    
+    <h1>Site Blocked</h1>
+    
+    <div class="domain" id="domain">Loading...</div>
+    
+    <p class="reason" id="reason">
+      Seraph AI has blocked access to this site because it may be malicious or unsafe.
+    </p>
+    
+    <div class="actions">
+      <a href="javascript:history.back()" class="btn btn-primary">Go Back</a>
+      <a href="https://seraph-security.preview.emergentagent.com" class="btn btn-secondary">Open Dashboard</a>
+      <button class="btn btn-danger" id="proceedBtn">Proceed Anyway</button>
+    </div>
+    
+    <div class="footer">
+      Protected by <a href="https://seraph-security.preview.emergentagent.com">Seraph AI Defense System</a>
+    </div>
+  </div>
+  
+  <script>
+    // Parse URL parameters
+    const params = new URLSearchParams(window.location.search);
+    const domain = params.get('domain') || 'Unknown';
+    const reason = params.get('reason') || 'suspicious_domain';
+    
+    document.getElementById('domain').textContent = domain;
+    
+    const reasons = {
+      'suspicious_domain': 'This domain matches known malicious patterns and may be used for phishing, malware distribution, or other attacks.',
+      'phishing': 'This site has been identified as a phishing attempt designed to steal your credentials.',
+      'malware': 'This site is known to distribute malware or malicious software.',
+      'c2': 'This domain is associated with command and control servers used by attackers.'
+    };
+    
+    document.getElementById('reason').textContent = reasons[reason] || reasons['suspicious_domain'];
+    
+    // Proceed anyway (dangerous)
+    document.getElementById('proceedBtn').addEventListener('click', () => {
+      if (confirm('WARNING: Proceeding to this site may put your device and data at risk. Are you sure?')) {
+        // Store bypass for this session
+        chrome.storage.local.get('bypassedDomains', (data) => {
+          const bypassed = data.bypassedDomains || [];
+          bypassed.push(domain);
+          chrome.storage.local.set({ bypassedDomains: bypassed }, () => {
+            window.location.href = 'https://' + domain;
+          });
+        });
+      }
+    });
+  </script>
+</body>
+</html>

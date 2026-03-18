@@ -1,0 +1,305 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        /* Seraph AI - Seraphic Watch Color Scheme
+         * A divine, futuristic observer aesthetic
+         * Background: #0C1020 | Panels: #121833 | Accent: #38BDF8
+         * Secondary: #A5F3FC | Halo Gold: #FDE68A | Text: #E0E7FF
+         */
+        --background: 225 45% 5%;          /* #0C1020 - Deep cosmic background */
+        --foreground: 226 57% 95%;         /* #E0E7FF - Celestial text */
+        --card: 229 45% 14%;               /* #121833 - Panel surfaces */
+        --card-foreground: 226 57% 95%;    /* #E0E7FF */
+        --popover: 229 45% 14%;            /* #121833 */
+        --popover-foreground: 226 57% 95%; /* #E0E7FF */
+        --primary: 199 89% 60%;            /* #38BDF8 - Divine accent */
+        --primary-foreground: 225 45% 5%;
+        --secondary: 183 100% 81%;         /* #A5F3FC - Ethereal secondary */
+        --secondary-foreground: 225 45% 5%;
+        --muted: 229 45% 18%;
+        --muted-foreground: 226 40% 70%;
+        --accent: 199 89% 60%;             /* #38BDF8 */
+        --accent-foreground: 225 45% 5%;
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 226 57% 95%;
+        --border: 229 40% 22%;
+        --input: 229 40% 22%;
+        --ring: 199 89% 60%;               /* #38BDF8 */
+        --radius: 0.5rem;
+        
+        /* Seraph AI Design Tokens */
+        --seraph-bg: #0C1020;
+        --seraph-panel: #121833;
+        --seraph-accent: #38BDF8;
+        --seraph-secondary: #A5F3FC;
+        --seraph-gold: #FDE68A;
+        --seraph-text: #E0E7FF;
+        --seraph-muted: rgba(165, 243, 252, 0.6);
+        
+        /* Glow Effects */
+        --glow-accent: 0 0 20px rgba(56, 189, 248, 0.4), 0 0 40px rgba(56, 189, 248, 0.2);
+        --glow-gold: 0 0 20px rgba(253, 230, 138, 0.4), 0 0 40px rgba(253, 230, 138, 0.2);
+        --glow-critical: 0 0 20px rgba(239, 68, 68, 0.4);
+        
+        /* Legacy colors for compatibility */
+        --neon-green: 160 84% 39%;
+        --neon-red: 0 84% 60%;
+        --neon-amber: 46 97% 77%;
+        --neon-cyan: 199 89% 60%;
+        --slate-950: 225 45% 5%;
+        --slate-900: 229 45% 14%;
+        --slate-800: 229 40% 18%;
+        --slate-700: 229 35% 28%;
+        --slate-600: 226 30% 45%;
+        --slate-400: 226 35% 65%;
+        --slate-200: 226 50% 90%;
+    }
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+code, pre, .code {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: hsl(var(--slate-900));
+}
+
+::-webkit-scrollbar-thumb {
+    background: hsl(var(--slate-700));
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--slate-600));
+}
+
+/* Seraphic Glow Effects */
+.glow-primary {
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), 0 0 40px rgba(56, 189, 248, 0.15);
+}
+
+.glow-accent {
+    box-shadow: var(--glow-accent);
+}
+
+.glow-gold {
+    box-shadow: var(--glow-gold);
+}
+
+.glow-green {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+}
+
+.glow-red {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+}
+
+.glow-amber {
+    box-shadow: 0 0 20px rgba(253, 230, 138, 0.4);
+}
+
+/* Seraphic Watch Panel Style */
+.seraph-panel {
+    background-color: var(--seraph-panel);
+    border: 1px solid rgba(56, 189, 248, 0.15);
+    border-radius: var(--radius);
+}
+
+.seraph-panel-gold {
+    background-color: var(--seraph-panel);
+    border: 1px solid rgba(253, 230, 138, 0.2);
+    border-radius: var(--radius);
+}
+
+/* Seraphic Stat Card */
+.seraph-stat-card {
+    background: linear-gradient(135deg, rgba(18, 24, 51, 0.9), rgba(12, 16, 32, 0.9));
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: var(--radius);
+    transition: all 0.3s ease;
+}
+
+.seraph-stat-card:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+    box-shadow: 0 0 30px rgba(56, 189, 248, 0.15);
+}
+
+/* Divine Threat Indicator */
+.seraph-threat-critical {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);
+}
+
+.seraph-threat-high {
+    background: linear-gradient(135deg, rgba(253, 230, 138, 0.1), transparent);
+    border: 1px solid rgba(253, 230, 138, 0.3);
+}
+
+.seraph-threat-medium {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.1), transparent);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+/* Seraphic Glass morphism */
+.glass {
+    background: rgba(18, 24, 51, 0.6);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(56, 189, 248, 0.1);
+}
+
+.seraph-glass {
+    background: linear-gradient(135deg, rgba(18, 24, 51, 0.8), rgba(12, 16, 32, 0.9));
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(56, 189, 248, 0.15);
+}
+
+/* Noise texture overlay */
+.noise-bg::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0.015;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    z-index: 9999;
+}
+
+/* Animations */
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 0 5px currentColor, 0 0 10px currentColor;
+    }
+    50% {
+        box-shadow: 0 0 15px currentColor, 0 0 25px currentColor;
+    }
+}
+
+@keyframes scan-line {
+    0% {
+        transform: translateY(-100%);
+    }
+    100% {
+        transform: translateY(100vh);
+    }
+}
+
+.animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Threat severity colors */
+.severity-critical {
+    @apply text-red-500 border-red-500/50;
+}
+
+.severity-high {
+    @apply text-amber-500 border-amber-500/50;
+}
+
+.severity-medium {
+    @apply text-yellow-500 border-yellow-500/50;
+}
+
+.severity-low {
+    @apply text-green-500 border-green-500/50;
+}
+
+/* Status colors */
+.status-active {
+    @apply text-red-400 bg-red-500/10;
+}
+
+.status-contained {
+    @apply text-amber-400 bg-amber-500/10;
+}
+
+.status-resolved {
+    @apply text-green-400 bg-green-500/10;
+}
+
+/* Seraphic Card hover effect */
+.card-tactical {
+    @apply transition-all duration-300;
+    background: linear-gradient(135deg, rgba(18, 24, 51, 0.8), rgba(12, 16, 32, 0.9));
+    border: 1px solid rgba(56, 189, 248, 0.15);
+}
+
+.card-tactical:hover {
+    border-color: rgba(56, 189, 248, 0.4);
+    box-shadow: 0 0 30px rgba(56, 189, 248, 0.15), 0 0 60px rgba(56, 189, 248, 0.05);
+}
+
+/* Seraphic Navigation */
+.seraph-nav-item {
+    transition: all 0.2s ease;
+}
+
+.seraph-nav-item:hover {
+    background-color: rgba(56, 189, 248, 0.05);
+    border-color: rgba(56, 189, 248, 0.2);
+}
+
+.seraph-nav-active {
+    background-color: rgba(56, 189, 248, 0.1);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+/* Button tactical style */
+.btn-tactical {
+    @apply relative overflow-hidden;
+}
+
+.btn-tactical::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    transition: left 0.5s;
+}
+
+.btn-tactical:hover::before {
+    left: 100%;
+}

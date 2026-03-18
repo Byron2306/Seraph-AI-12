@@ -1,0 +1,407 @@
+# Seraph AI Defense System - Docker Compose Setup
+# ================================================
+# Complete deployment with all services
+#
+# Quick Start:
+#   1. cp .env.example .env && nano .env
+#   2. docker-compose up -d
+#   3. Access UI at http://localhost:3000
+#
+# Services:
+#   - backend: FastAPI server (port 8001)
+#   - frontend: React app (port 3000)
+#   - mongodb: Database (port 27017)
+#   - wireguard: VPN server (port 51820/udp)
+#
+# Requirements:
+#   - Docker 20.10+ & Docker Compose 2.0+
+#   - Linux kernel with WireGuard support (5.6+)
+#   - NET_ADMIN capability for VPN
+#   - 4GB+ RAM recommended
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # MongoDB Database
+  # ==========================================================================
+  mongodb:
+    image: mongo:7.0
+    container_name: seraph-mongodb
+    restart: unless-stopped
+    ports:
+      - "${BIND_MONGODB_HOST:-127.0.0.1}:27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    environment:
+      MONGO_INITDB_DATABASE: seraph_ai_defense
+    networks:
+      - seraph-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ==========================================================================
+  # Backend API Server
+  # ==========================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: seraph-backend
+    restart: unless-stopped
+    ports:
+      - "${BIND_BACKEND_HOST:-127.0.0.1}:8001:8001"
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+      - DB_NAME=seraph_ai_defense
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      - REMOTE_ADMIN_ONLY=${REMOTE_ADMIN_ONLY:-true}
+      - REMOTE_ADMIN_EMAILS=${REMOTE_ADMIN_EMAILS:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://165.22.41.184,http://165.22.41.184:3000,http://localhost:3000}
+      - VPN_SERVER_ENDPOINT=${VPN_SERVER_ENDPOINT:-vpn.yourdomain.com}
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL:-http://elasticsearch:9200}
+      - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME:-}
+      - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD:-}
+      - ELASTICSEARCH_API_KEY=${ELASTICSEARCH_API_KEY:-}
+      - OLLAMA_URL=${OLLAMA_URL:-http://ollama:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-mistral}
+      - LOCAL_LLM_ENABLED=${LOCAL_LLM_ENABLED:-true}
+      - CUCKOO_API_URL=${CUCKOO_API_URL:-http://cuckoo:8090}
+      - CUCKOO_API_TOKEN=${CUCKOO_API_TOKEN:-}
+      - CUCKOO_API_VERSION=${CUCKOO_API_VERSION:-2}
+      - TRIVY_ENABLED=${TRIVY_ENABLED:-true}
+      - FALCO_ENABLED=${FALCO_ENABLED:-true}
+      - VPN_ENABLED=${VPN_ENABLED:-true}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY:-}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    volumes:
+      - vpn_config:/var/lib/anti-ai-defense/vpn
+      - ./scripts:/app/scripts:ro
+      - ./backend/playbooks:/app/playbooks:ro
+      - ./unified_agent:/app/unified_agent:ro
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - seraph-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+
+  # ==========================================================================
+  # Elasticsearch (local SIEM store)
+  # ==========================================================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: seraph-elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - seraph-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9200/_cluster/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ==========================================================================
+  # Kibana (local dashboards)
+  # ==========================================================================
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: seraph-kibana
+    restart: unless-stopped
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - seraph-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5601/api/status"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 45s
+
+  # ==========================================================================
+  # Ollama (local LLM)
+  # ==========================================================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: seraph-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - seraph-network
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 8
+      start_period: 30s
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: seraph-ollama-pull
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_started
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["ollama pull ${OLLAMA_MODEL:-mistral} || true"]
+    networks:
+      - seraph-network
+    profiles:
+      - bootstrap
+
+  # ==========================================================================
+  # Trivy Server (optional remote scanner service)
+  # ==========================================================================
+  trivy:
+    image: aquasec/trivy:latest
+    container_name: seraph-trivy
+    restart: unless-stopped
+    command: ["server", "--listen", "0.0.0.0:4954"]
+    ports:
+      - "4954:4954"
+    volumes:
+      - trivy_cache:/root/.cache/trivy
+    networks:
+      - seraph-network
+    profiles:
+      - security
+
+  # ==========================================================================
+  # Falco Runtime Security (optional)
+  # ==========================================================================
+  falco:
+    image: falcosecurity/falco-no-driver:latest
+    container_name: seraph-falco
+    restart: unless-stopped
+    privileged: true
+    pid: host
+    volumes:
+      - /var/run/docker.sock:/host/var/run/docker.sock
+      - /proc:/host/proc:ro
+      - /boot:/host/boot:ro
+      - /lib/modules:/host/lib/modules:ro
+      - /usr:/host/usr:ro
+      - falco_data:/var/log/falco
+    networks:
+      - seraph-network
+    profiles:
+      - security
+
+  # ==========================================================================
+  # Suricata IDS (optional host sensor)
+  # ==========================================================================
+  suricata:
+    image: jasonish/suricata:latest
+    container_name: seraph-suricata
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_NICE
+    command: ["-i", "${SURICATA_INTERFACE:-eth0}", "-l", "/var/log/suricata"]
+    volumes:
+      - suricata_logs:/var/log/suricata
+      - ./backend:/app/backend:ro
+    profiles:
+      - security
+
+  # ==========================================================================
+  # Cuckoo Sandbox API (optional - requires VM/lab tuning)
+  # ==========================================================================
+  cuckoo:
+    image: blacktop/cuckoo:2.0.7
+    container_name: seraph-cuckoo
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "8090:8090"
+      - "2042:2042"
+    environment:
+      - CUCKOO_API_HOST=0.0.0.0
+    volumes:
+      - cuckoo_data:/cuckoo
+      - /tmp:/tmp
+    networks:
+      - seraph-network
+    profiles:
+      - sandbox
+
+  cuckoo-web:
+    image: blacktop/cuckoo:2.0.7
+    container_name: seraph-cuckoo-web
+    restart: unless-stopped
+    command: web
+    ports:
+      - "8080:8080"
+    environment:
+      - CUCKOO_API=http://cuckoo:8090
+    depends_on:
+      - cuckoo
+    networks:
+      - seraph-network
+    profiles:
+      - sandbox
+
+  # ==========================================================================
+  # Frontend React App
+  # ==========================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL:-}
+    container_name: seraph-frontend
+    restart: unless-stopped
+    ports:
+      - "${BIND_FRONTEND_HOST:-127.0.0.1}:3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - seraph-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================================================
+  # WireGuard VPN Server
+  # ==========================================================================
+  wireguard:
+    image: linuxserver/wireguard:latest
+    container_name: seraph-wireguard
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - SERVERURL=${VPN_SERVER_ENDPOINT:-vpn.yourdomain.com}
+      - SERVERPORT=51820
+      - PEERS=${VPN_PEERS:-10}
+      - PEERDNS=1.1.1.1,8.8.8.8
+      - INTERNAL_SUBNET=10.200.200.0/24
+      - ALLOWEDIPS=0.0.0.0/0
+      - LOG_CONFS=true
+    volumes:
+      - wireguard_config:/config
+      - /lib/modules:/lib/modules:ro
+    ports:
+      - "${BIND_WIREGUARD_HOST:-127.0.0.1}:51820:51820/udp"
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv4.ip_forward=1
+    networks:
+      - seraph-network
+
+  # ==========================================================================
+  # Nginx Reverse Proxy with SSL/TLS
+  # ==========================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: seraph-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - certbot_webroot:/var/www/certbot:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - seraph-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    profiles:
+      - ssl
+
+# ==========================================================================
+# Networks
+# ==========================================================================
+networks:
+  seraph-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# ==========================================================================
+# Volumes
+# ==========================================================================
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  ollama_data:
+    driver: local
+  trivy_cache:
+    driver: local
+  falco_data:
+    driver: local
+  suricata_logs:
+    driver: local
+  cuckoo_data:
+    driver: local
+  vpn_config:
+    driver: local
+  wireguard_config:
+    driver: local
+  certbot_webroot:
+    driver: local
